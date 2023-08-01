@@ -1,0 +1,293 @@
+---
+title: "Hepatitis C Dashboard"
+author: Manuel Teodoro Tenango
+affiliation-title: Centro Europeo de Másteres y Posgrados
+description-title: Master en Bioestadística y Bioinformática
+lang: es
+output:
+  flexdashboard::flex_dashboard:
+    orientation: columns
+runtime: shiny
+---
+
+```{r global, include=FALSE}
+library(dplyr)
+library(kableExtra)
+library(plotly)
+library(tidyr)
+library(ggplot2)
+library(shiny)
+library(flexdashboard)
+library(reshape2)
+
+datos <- read.csv("hepatitisC.csv")
+names(datos)[1] <- "ID"
+
+datos <- mutate(
+  datos,
+  severity = case_when(
+    substr(Category, 1, 1) == "0" ~ "0",
+    substr(Category, 1, 1) == "1" ~ "1",
+    substr(Category, 1, 1) == "2" ~ "2",
+    substr(Category, 1, 1) == "3" ~ "3",
+    TRUE ~ as.character(NA)),
+  severity = as.factor(severity),
+  Sex = as.factor(Sex)
+)
+datos_numeric <- datos[c(-1, -2, -4, -15)]
+
+make_boxplot_var <- function(variable) {
+  ggplot(datos) +
+    geom_boxplot(
+      aes(x = severity, y = !!sym(variable), fill = severity),
+      outlier.colour = "red") +
+    theme_classic() +
+    theme(legend.position = "none")
+}
+
+```
+
+Boxplots
+===
+
+Some major text
+
+Column {.tabset .tabset-fade}
+----------------------------------------
+
+### Todas las variables
+
+Some extra text
+
+```{r boxplots_all}
+pivot_longer(
+  datos,
+  names_to = "Variables",
+  values_to = "Valores",
+  cols = -c(ID, Category, Age, Sex, severity)) %>%
+  plot_ly(x = ~interaction(Variables, severity), y = ~Valores) %>%
+  add_boxplot(color = ~Variables) %>%
+  layout(xaxis = list(title = ""))
+```
+
+
+### Por severidad
+
+```{r boxplots_sev}
+pivot_longer(
+  datos,
+  names_to = "Variables",
+  values_to = "Valores",
+  cols = -c(ID, Category, Age, Sex, severity)) %>%
+  plot_ly(x = ~severity, y = ~Valores) %>%
+  add_boxplot(color = ~severity) %>%
+  layout(xaxis = list(title = ""))
+```
+
+### Por variable
+
+```{r boxplots_var}
+pivot_longer(
+  datos,
+  names_to = "Variables",
+  values_to = "Valores",
+  cols = -c(ID, Category, Age, Sex, severity)) %>%
+  plot_ly(x = ~Variables, y = ~Valores) %>%
+  add_boxplot(color = ~Variables) %>%
+  layout(xaxis = list(title = ""))
+```
+
+
+
+Boxplots por var
+===
+
+Column {.tabset .tabset-fade}
+----------------------------------------
+
+### ALB
+
+```{r bxp_alb}
+ggplotly(make_boxplot_var("ALB"))
+```
+
+### ALP
+
+```{r bxp_alp}
+ggplotly(make_boxplot_var("ALP"))
+```
+
+### ALT
+
+```{r bxp_alt}
+ggplotly(make_boxplot_var("ALT"))
+```
+
+Column {.tabset .tabset-fade}
+----------------------------------------
+
+### AST
+
+```{r bxp_ast}
+ggplotly(make_boxplot_var("AST"))
+```
+
+### BIL
+
+```{r bxp_bil}
+ggplotly(make_boxplot_var("BIL"))
+```
+
+### CHE
+
+```{r bxp_che}
+ggplotly(make_boxplot_var("CHE"))
+```
+
+Column {.tabset .tabset-fade}
+----------------------------------------
+
+### CHOL
+
+```{r bxp_chol}
+ggplotly(make_boxplot_var("CHOL"))
+```
+
+### CREA
+
+```{r bxp_crea}
+ggplotly(make_boxplot_var("CREA"))
+```
+
+### GGT
+
+```{r bxp_ggt}
+ggplotly(make_boxplot_var("GGT"))
+```
+
+### PROT
+
+```{r bxp_prot}
+ggplotly(make_boxplot_var("PROT"))
+```
+
+
+
+Correlaciones
+===
+
+
+Column {.tabset .tabset-fade}
+----------------------------------------
+
+### Heatmap
+
+
+```{r heatmap}
+median_replace_missing <- function(vec) {
+  m <- median(vec, na.rm = TRUE)
+  vec[is.na(vec)] <- m
+  return(vec)
+}
+data_cors <- apply(datos_numeric, 2, median_replace_missing)
+
+get_lower_tri <- function(x) {
+  x[upper.tri(x)] <- NA
+  return(x)
+}
+
+cors <- cor(data_cors)
+cors <- get_lower_tri(cors)
+cors <- melt(cors, na.rm = T)
+cors$value <- round(cors$value, 2)
+
+ggplot(cors, aes(Var1, Var2, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white",
+                       midpoint = 0, limit = c(-1, 1), space = "Lab",
+                       name = "Correlación de\nPearson") +
+  geom_text(aes(Var1, Var2, label = value), color = "black", size = 4) +
+  theme_minimal() +
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank(),
+    axis.ticks = element_blank(),
+    legend.justification = c(1, 0),
+    legend.position = c(0.45, 0.85),
+    legend.direction = "horizontal")
+```
+
+### Scatterplots
+
+
+```{r cor_scatter}
+pl_colorscale <- list(c(0, "#119dff"),
+                      c(1, "pink"),
+                      c(2, "orange"),
+                      c(3, "red"))
+
+axis <- list(showline = F, zeroline = F,
+             gridcolor = "#ffff", ticklen = 4)
+
+corPlot <- datos %>% plot_ly()
+corPlot <- corPlot %>%
+  add_trace(
+    type = "splom",
+    dimensions = list(
+      list(label = "Age", values = ~Age),
+      list(label = "ALB", values = ~ALB),
+      list(label = "ALP", values = ~ALP),
+      list(label = "ALT", values = ~ALT),
+      list(label = "AST", values = ~AST),
+      list(label = "BIL", values = ~BIL),
+      list(label = "CHE", values = ~CHE),
+      list(label = "CHOL", values = ~CHOL),
+      list(label = "CREA", values = ~CREA),
+      list(label = "GGT", values = ~GGT),
+      list(label = "PROT", values = ~PROT)
+    ),
+    text = ~factor(severity, labels = c("Control", "Hepatitis", "Fibrosis", "Cirrosis")),
+    diagonal = list(visible = F),
+    marker = list(
+      color = ~severity,
+      colorscale = pl_colorscale,
+      size = 5,
+      line = list(
+        width = 1,
+        color = "rgb(230,230,230)"
+      )
+    )
+  )
+corPlot <- corPlot %>%
+  layout(
+    hovermode = "closest",
+    dragmode = "select",
+    plot_bgcolor = "rgba(240,240,240, 0.95)",
+    xaxis = list(domain = NULL, showline = F, zeroline = F, gridcolor = "#ffff", ticklen = 4),
+    yaxis = list(domain = NULL, showline = F, zeroline = F, gridcolor = "#ffff", ticklen = 4),
+    xaxis2=axis,
+    xaxis3=axis,
+    xaxis4=axis,
+    xaxis5=axis,
+    xaxis6=axis,
+    xaxis7=axis,
+    xaxis8=axis,
+    xaxis9=axis,
+    xaxis10=axis,
+    xaxis11=axis,
+    yaxis2=axis,
+    yaxis3=axis,
+    yaxis4=axis,
+    yaxis5=axis,
+    yaxis6=axis,
+    yaxis7=axis,
+    yaxis8=axis,
+    yaxis9=axis,
+    yaxis10=axis,
+    yaxis11=axis)
+
+corPlot
+```
