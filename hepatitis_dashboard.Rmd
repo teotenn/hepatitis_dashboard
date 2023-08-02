@@ -19,6 +19,9 @@ library(ggplot2)
 library(shiny)
 library(flexdashboard)
 library(reshape2)
+library(ade4)
+library(factoextra)
+library(magrittr)
 
 datos <- read.csv("hepatitisC.csv")
 names(datos)[1] <- "ID"
@@ -224,10 +227,10 @@ ggplot(cors, aes(Var1, Var2, fill = value)) +
 
 
 ```{r cor_scatter}
-pl_colorscale <- list(c(0, "#119dff"),
-                      c(1, "pink"),
-                      c(2, "orange"),
-                      c(3, "red"))
+pl_colorscale <- list(c('0', "#4812f9"),
+                      c('1', "#f91285"),
+                      c('2', "#f97e12"),
+                      c('3', "#f91a12"))
 
 axis <- list(showline = F, zeroline = F,
              gridcolor = "#ffff", ticklen = 4)
@@ -290,4 +293,194 @@ corPlot <- corPlot %>%
     yaxis11=axis)
 
 corPlot
+```
+
+
+ACP
+===
+
+
+Column {.tabset .tabset-fade}
+----------------------------------------
+
+### Eigenvalors
+
+```{r pcaPre}
+data_pca <- apply(datos_numeric, 2, median_replace_missing)
+pca_res <- dudi.pca(data_pca, scannf = FALSE, nf = 5)
+```
+
+```{r pca_eigenvals}
+eigenvals <- get_eigenvalue(pca_res)
+names(eigenvals)[2:3] <- c("Varianza(%)", "Varianza_acumulada(%)")
+kbl(eigenvals, booktabs = T)
+```
+
+```{r pca_contribi}
+#| label: tbl-contrib
+#| tbl-cap: "Contribución de las variables para los 5 primeras dimensiones"
+
+res_var <- get_pca_var(pca_res)
+kbl(as.data.frame(res_var$contrib), booktabs = T)
+```
+
+### Componentes Principales
+
+```{r pca_allComponents}
+components <- pca_res$li
+components <- data.frame(components)
+components <- cbind(components, datos$severity)
+colnames(components)[6] <- "Severidad"
+
+axis <- list(showline=FALSE,
+            zeroline=FALSE,
+            gridcolor="#ffff",
+            ticklen=4)
+
+all_components <- components %>%
+  plot_ly() %>%
+  add_trace(
+    type = "splom",
+    dimensions = list(
+      list(label="PC1", values=~Axis1),
+      list(label="PC2", values=~Axis2),
+      list(label="PC3", values=~Axis3),
+      list(label="PC4", values=~Axis4),
+      list(label="PC5", values=~Axis5)
+    ),
+    color= ~Severidad,
+    text = ~factor(Severidad, labels = c("Control", "Hepatitis", "Fibrosis", "Cirrosis")),
+    marker = list(
+      size = 7
+    )
+  ) %>% style(diagonal = list(visible = F)) %>%
+  layout(
+    hovermode="closest",
+    dragmode= "select",
+    plot_bgcolor="rgba(240,240,240, 0.95)",
+    xaxis=list(domain=NULL, showline=F, zeroline=F, gridcolor="#ffff", ticklen=4),
+    yaxis=list(domain=NULL, showline=F, zeroline=F, gridcolor="#ffff", ticklen=4),
+    xaxis2=axis,
+    xaxis3=axis,
+    xaxis4=axis,
+    yaxis2=axis,
+    yaxis3=axis,
+    yaxis4=axis
+  )
+options(warn=-1)
+
+all_components
+```
+
+### Components 1-3
+
+```{r pc_123}
+pc123 <- components
+pc123$Axis2 <- -pc123$Axis2
+pc123$Axis3 <- -pc123$Axis3
+
+plot123 <- plot_ly(
+  pc123,
+  x = ~Axis1, y = ~Axis2, z = ~Axis3,
+  color = ~Severidad,
+  text = ~factor(Severidad, labels = c("Control", "Hepatitis", "Fibrosis", "Cirrosis"))
+) %>%
+  add_markers(size = 12)
+plot123 <- plot123 %>%
+  layout(
+    title = tit,
+    scene = list(bgcolor = "#e5ecf6")
+)
+
+plot123
+```
+
+### Biplot PC 1-2
+
+
+```{r loadings12}
+loadings <- pca_res$co[,1:2]
+features <- names(datos_numeric)
+loadings <- loadings * 8
+
+biplot12 <- plot_ly(
+  components,
+  x = ~Axis1, y = ~Axis2,
+  color = ~Severidad,
+  text = ~factor(Severidad, labels = c("Control", "Hepatitis", "Fibrosis", "Cirrosis")),
+  type = "scatter",
+  mode = "markers") %>%
+  layout(
+    legend = list(title = list(text = "Severidad")),
+    plot_bgcolor = "#ffffff",
+    xaxis = list(
+      title = "Ax1"),
+    yaxis = list(
+      title = "Ax2"))
+for (i in seq(11)) {
+  biplot12 <- biplot12 %>%
+    add_segments(
+      x = 0,
+      xend = loadings[i, 1],
+      y = 0,
+      yend = loadings[i, 2],
+      line = list(color = "#00008b"),
+      inherit = FALSE,
+      showlegend = FALSE) %>%
+    add_annotations(
+      x = loadings[i, 1],
+      y = loadings[i, 2],
+      ax = 0,
+      ay = 0,
+      text = features[i],
+      xanchor = "center",
+      yanchor = "bottom")
+}
+
+biplot12
+```
+
+### Biplot PC 1-3
+
+
+```{r loadings13}
+loadings <- pca_res$co[,c(1,3)]
+features <- names(datos_numeric)
+loadings <- loadings * 8
+
+biplo13 <- plot_ly(
+  components,
+  x = ~Axis1, y = ~Axis3,
+  color = ~Severidad,
+  text = ~factor(Severidad, labels = c("Control", "Hepatitis", "Fibrosis", "Cirrosis")),
+  type = "scatter",
+  mode = "markers") %>%
+  layout(
+    legend = list(title = list(text = "Severidad")),
+    plot_bgcolor = "#ffffff",
+    xaxis = list(
+      title = "Ax1"),
+    yaxis = list(
+      title = "Ax3"))
+for (i in seq(11)) {
+  biplo13 <- biplo13 %>%
+    add_segments(
+      x = 0,
+      xend = loadings[i, 1],
+      y = 0,
+      yend = loadings[i, 2],
+      line = list(color = "#00008b"),
+      inherit = FALSE,
+      showlegend = FALSE) %>%
+    add_annotations(
+      x = loadings[i, 1],
+      y = loadings[i, 2],
+      ax = 0,
+      ay = 0,
+      text = features[i],
+      xanchor = "center",
+      yanchor = "bottom")
+}
+
+biplo13
 ```
