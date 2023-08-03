@@ -22,6 +22,7 @@ library(reshape2)
 library(ade4)
 library(factoextra)
 library(magrittr)
+library(highcharter)
 
 datos <- read.csv("hepatitisC.csv")
 names(datos)[1] <- "ID"
@@ -303,23 +304,24 @@ ACP
 Column {.tabset .tabset-fade}
 ----------------------------------------
 
-### Eigenvalors
+### Eigenvalores
 
 ```{r pcaPre}
+## TABLE
 data_pca <- apply(datos_numeric, 2, median_replace_missing)
 pca_res <- dudi.pca(data_pca, scannf = FALSE, nf = 5)
 ```
 
 ```{r pca_eigenvals}
+## TABLE
 eigenvals <- get_eigenvalue(pca_res)
 names(eigenvals)[2:3] <- c("Varianza(%)", "Varianza_acumulada(%)")
 kbl(eigenvals, booktabs = T)
 ```
 
-```{r pca_contribi}
-#| label: tbl-contrib
-#| tbl-cap: "Contribución de las variables para los 5 primeras dimensiones"
+### Contribuciones
 
+```{r pca_contribi}
 res_var <- get_pca_var(pca_res)
 kbl(as.data.frame(res_var$contrib), booktabs = T)
 ```
@@ -483,4 +485,279 @@ for (i in seq(11)) {
 }
 
 biplo13
+```
+
+Predicción de infección
+===
+
+```{r models_pre}
+library(randomForest)
+library(caret)
+library(rsample)
+library(nnet)
+library(e1071)
+
+datos_procesados <- data.frame(ID = datos$ID)
+for (columna in names(datos)) {
+  if (is.numeric(datos[[columna]])) {
+    datos_procesados[[columna]] <- median_replace_missing(datos[[columna]])
+  } else {
+    datos_procesados[[columna]] <- datos[[columna]]
+  }
+}
+
+datos_procesados <- datos_procesados %>%
+  mutate(Infection = ifelse(severity == 0, 0, 1),
+         Infection = as.factor(Infection)) %>%
+  dplyr::select(-ID, -Category)
+
+set.seed(111)
+split <- initial_split(datos_procesados, prop = 0.7, strata = Infection)
+train <- split %>% 
+  training()
+test <- split %>% 
+  testing()
+```
+
+
+Column {data-width=250}
+----------------------------------------
+
+### Random Forest (RF)
+
+```{r inf_rf}
+## TABLE
+set.seed(111)
+modelo_rf <- randomForest(Infection~., data = train, proximity = TRUE) #
+prediccion_rf <- predict(modelo_rf, test)
+matrix_rf <- confusionMatrix(prediccion_rf, test$Infection)
+
+kable(matrix_rf$table, booktabs = T) %>%
+  kable_styling() %>%
+  add_header_above(c(" ", "Reference" = 2)) %>%
+  pack_rows("Prediction", 1, 2)
+```
+
+Column {data-width=250}
+----------------------------------------
+
+### Multinomial log-linear (LOG)
+
+```{r inf_log}
+## TABLE
+set.seed(111)
+modelo_log <- multinom(Infection~., data = train, trace = F)
+prediccion_log <- predict(modelo_log, test)
+matrix_log <- confusionMatrix(prediccion_log, test$Infection)
+
+kable(matrix_log$table, booktabs = T) %>%
+  kable_styling() %>%
+  add_header_above(c(" ", "Reference" = 2)) %>%
+  pack_rows("Prediction", 1, 2)
+```
+
+Column {data-width=250}
+----------------------------------------
+
+### Gaussian naive bayes (GNB)
+
+```{r inf_gnb}
+## TABLE
+set.seed(111)
+modelo_gnb <- naiveBayes(Infection~., data = train)
+prediccion_gnb <- predict(modelo_gnb, test)
+matrix_gnb <- confusionMatrix(prediccion_gnb, test$Infection)
+
+kable(matrix_gnb$table, booktabs = T) %>%
+  kable_styling() %>%
+  add_header_above(c(" ", "Reference" = 2)) %>%
+  pack_rows("Prediction", 1, 2)
+```
+
+Column {data-width=250}
+----------------------------------------
+
+### K nearest neighbors (KNN)
+
+```{r inf_knn}
+## TABLE
+cont <- trainControl(method = "repeatedcv", repeats = 3)
+set.seed(111)
+modelo_knn <- train(Infection~., data = train,
+                    method = "knn", trControl = cont,
+                    preProcess = c("center","scale"),
+                    tuneLength = 20)
+prediccion_knn <- predict(modelo_knn, test)
+matrix_knn <- confusionMatrix(prediccion_knn, test$Infection)
+
+kable(matrix_knn$table, booktabs = T) %>%
+  kable_styling() %>%
+  add_header_above(c(" ", "Reference" = 2)) %>%
+  pack_rows("Prediction", 1, 2)
+```
+
+Predicción de Severidad
+===
+
+```{r modelsSev_pre}
+datos_sev <- filter(datos_procesados, severity != 0) %>%
+  mutate(severity = factor(severity, levels = c(1, 2, 3)))
+
+set.seed(111)
+split <- initial_split(datos_sev, prop = 0.7, strata = severity)
+
+train <- split %>% 
+  training()
+test <- split %>% 
+  testing()
+```
+
+
+Column {data-width=250}
+----------------------------------------
+
+### Random Forest (RF)
+
+```{r sev_rf}
+## TABLE
+set.seed(101)
+model_rf <- randomForest(severity~., data = train, proximity = TRUE) #
+pred_rf <- predict(model_rf, test)
+cm_rf <- confusionMatrix(pred_rf, test$severity)
+
+kable(cm_rf$table, booktabs = T, row.names = T) %>%
+  kable_styling() %>%
+  add_header_above(c(" ", "Reference" = 3)) %>%
+  pack_rows("Prediction", 1, 3)
+```
+
+Column {data-width=250}
+----------------------------------------
+
+### Multinomial log-linear (LOG)
+
+```{r sev_log}
+## TABLE
+set.seed(111)
+model_log <- multinom(severity ~., data = train, trace = F)
+pred_log <- predict(model_log, test)
+cm_log <- confusionMatrix(pred_log, test$severity)
+
+kable(cm_log$table, booktabs = T, row.names = T) %>%
+  kable_styling() %>%
+  add_header_above(c(" ", "Reference" = 3)) %>%
+  pack_rows("Prediction", 1, 3)
+```
+
+Column {data-width=250}
+----------------------------------------
+
+### Gaussian naive bayes (GNB)
+
+```{r sev_gnb}
+## TABLE
+set.seed(101)
+model_gnb <- naiveBayes(severity~., data = train)
+pred_gnb <- predict(model_gnb, test)
+cm_gnb <- confusionMatrix(pred_gnb, test$severity)
+
+kable(cm_gnb$table, booktabs = T, row.names = T) %>%
+  kable_styling() %>%
+  add_header_above(c(" ", "Reference" = 3)) %>%
+  pack_rows("Prediction", 1, 3)
+```
+
+Column {data-width=250}
+----------------------------------------
+
+### K nearest neighbors (KNN)
+
+```{r sev_knn}
+## TABLE
+ctrl <- trainControl(method = "repeatedcv", repeats = 3)
+set.seed(123)
+model_knn <- train(severity ~ ., data = train,
+                   method = "knn", trControl = ctrl,
+                   preProcess = c("center","scale"),
+                   tuneLength = 10)
+pred_knn <- predict(model_knn, test)
+cm_knn <- confusionMatrix(pred_knn, test$severity)
+
+kbl(cm_knn$table, booktabs = T, row.names = T) %>%
+  kable_styling() %>%
+  add_header_above(c(" ", "Reference" = 3)) %>%
+  pack_rows("Prediction", 1, 3)
+```
+
+Resultados Modelos
+===
+
+Column {.tabset .tabset-fade}
+---------------------
+
+### Infección 
+
+```{r infResults}
+results_infections <- rbind(
+  as.data.frame(Map(cbind, matrix_rf$overall)),
+  as.data.frame(Map(cbind, matrix_log$overall)),
+  as.data.frame(Map(cbind, matrix_gnb$overall)),
+  as.data.frame(Map(cbind, matrix_knn$overall))
+)
+
+results_infections <- results_infections %>%
+  mutate_all(as.numeric) %>%
+  mutate(Method = c("RF", "LOG", "GNB", "KNN"))
+
+results_infections
+```
+
+### Severidad
+
+```{r sevResults}
+## TABLE
+results <- rbind(
+  as.data.frame(Map(cbind, cm_rf$overall)),
+  as.data.frame(Map(cbind, cm_log$overall)),
+  as.data.frame(Map(cbind, cm_gnb$overall)),
+  as.data.frame(Map(cbind, cm_knn$overall))
+)
+
+results <- results %>%
+  mutate_all(as.numeric) %>%
+  mutate(Method = c("RF", "LOG", "GNB", "KNN"))
+
+results
+```
+
+### Exactitud
+
+```{r plot_accuracy}
+hcresults %>%
+  hchart("column",
+         hcaes(x = Method, y = Accuracy, group = "Modelo"),
+         id = c("Infeccion", "Severidad")) %>%
+  hc_add_series(
+    hcresults,
+    type = "errorbar",
+    hcaes(x = Method, y = Accuracy,
+          low = AccuracyLower, high = AccuracyUpper,
+          color = Modelo, group = Modelo),
+    linkedTo = c("Infeccion", "Severidad"),
+    enableMouseTracking = T,
+    showInLegend = F,
+    stemWidth = 3
+  )
+```
+
+### Kappa
+
+```{r resultsKappa}
+results_infections$Modelo <- "Infeccion"
+results$Modelo <- "Severidad"
+hcresults <- rbind(results, results_infections)
+
+hcresults %>%
+  hchart("column", hcaes(x = Method, y = Kappa, group = "Modelo"))
+
 ```
