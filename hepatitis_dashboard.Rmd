@@ -23,6 +23,7 @@ library(ade4)
 library(factoextra)
 library(magrittr)
 library(highcharter)
+library(rbokeh)
 
 datos <- read.csv("hepatitisC.csv")
 names(datos)[1] <- "ID"
@@ -39,16 +40,6 @@ datos <- mutate(
   Sex = as.factor(Sex)
 )
 datos_numeric <- datos[c(-1, -2, -4, -15)]
-
-make_boxplot_var <- function(variable) {
-  ggplot(datos) +
-    geom_boxplot(
-      aes(x = severity, y = !!sym(variable), fill = severity),
-      outlier.colour = "red") +
-    theme_classic() +
-    theme(legend.position = "none")
-}
-
 ```
 
 Boxplots
@@ -106,25 +97,45 @@ pivot_longer(
 Boxplots por var
 ===
 
+
+```{r make_bxplots}
+make_boxplot_var <- function(variable) {
+  require(rbokeh)
+  datos$jitwich <- paste0(datos$severity, ":", runif(min = 0.2, max = 0.8, nrow(dd)))
+  figure(data = datos, width = 370, height = 500,
+         title = variable, legend = F, toolbar_location = NULL) %>%
+    ly_boxplot(severity, variable,
+               hover = c(severity, variable), 
+               line_color = "black",
+               outlier_glyph = NA,
+               fill_alpha = 0) %>%
+    ly_points(jitwich, variable, hover = c(variable, severity), color = severity, fill_alpha = 0.2) %>%
+    theme_title(align = "center", text_font_size = "20pt") %>%
+    set_palette(discrete_color = pal_color(c("blue", "pink", "orange", "red")))
+}
+
+```
+
+
 Column {.tabset .tabset-fade}
 ----------------------------------------
 
 ### ALB
 
 ```{r bxp_alb}
-ggplotly(make_boxplot_var("ALB"))
+make_boxplot_var("ALB")
 ```
 
 ### ALP
 
 ```{r bxp_alp}
-ggplotly(make_boxplot_var("ALP"))
+make_boxplot_var("ALP")
 ```
 
 ### ALT
 
 ```{r bxp_alt}
-ggplotly(make_boxplot_var("ALT"))
+make_boxplot_var("ALT")
 ```
 
 Column {.tabset .tabset-fade}
@@ -133,19 +144,19 @@ Column {.tabset .tabset-fade}
 ### AST
 
 ```{r bxp_ast}
-ggplotly(make_boxplot_var("AST"))
+make_boxplot_var("AST")
 ```
 
 ### BIL
 
 ```{r bxp_bil}
-ggplotly(make_boxplot_var("BIL"))
+make_boxplot_var("BIL")
 ```
 
 ### CHE
 
 ```{r bxp_che}
-ggplotly(make_boxplot_var("CHE"))
+make_boxplot_var("CHE")
 ```
 
 Column {.tabset .tabset-fade}
@@ -154,25 +165,25 @@ Column {.tabset .tabset-fade}
 ### CHOL
 
 ```{r bxp_chol}
-ggplotly(make_boxplot_var("CHOL"))
+make_boxplot_var("CHOL")
 ```
 
 ### CREA
 
 ```{r bxp_crea}
-ggplotly(make_boxplot_var("CREA"))
+make_boxplot_var("CREA")
 ```
 
 ### GGT
 
 ```{r bxp_ggt}
-ggplotly(make_boxplot_var("GGT"))
+make_boxplot_var("GGT")
 ```
 
 ### PROT
 
 ```{r bxp_prot}
-ggplotly(make_boxplot_var("PROT"))
+make_boxplot_var("PROT")
 ```
 
 
