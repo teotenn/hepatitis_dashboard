@@ -327,14 +327,24 @@ pca_res <- dudi.pca(data_pca, scannf = FALSE, nf = 5)
 ## TABLE
 eigenvals <- get_eigenvalue(pca_res)
 names(eigenvals)[2:3] <- c("Varianza(%)", "Varianza_acumulada(%)")
-kbl(eigenvals, booktabs = T)
+
+kable(eigenvals, booktabs = T) %>%
+  kable_styling() %>%
+  row_spec(5, bold = T, color = "white", background = "darkblue")
 ```
 
 ### Contribuciones
 
 ```{r pca_contribi}
 res_var <- get_pca_var(pca_res)
-kbl(as.data.frame(res_var$contrib), booktabs = T)
+contribuciones <- as.data.frame(res_var$contrib)
+
+kable(contribuciones, booktabs = T) %>%
+  kable_styling() %>%
+  row_spec(c(5, 8, 11),
+           bold = T, color = "white", background = "#1d2951") %>%
+  row_spec(c(1:3), bold = T, color = "white", background = "#000080") %>%
+  row_spec(c(10, 7), bold = T, color = "white", background = "#0e4d92")
 ```
 
 ### Componentes Principales
@@ -720,7 +730,9 @@ results_infections <- results_infections %>%
   mutate_all(as.numeric) %>%
   mutate(Method = c("RF", "LOG", "GNB", "KNN"))
 
-results_infections
+kbl(results_infections) %>%
+  kable_paper("hover") %>%
+  kable_classic(html_font = "Cambria")
 ```
 
 ### Severidad
@@ -738,7 +750,9 @@ results <- results %>%
   mutate_all(as.numeric) %>%
   mutate(Method = c("RF", "LOG", "GNB", "KNN"))
 
-results
+kbl(results) %>%
+  kable_paper("hover") %>%
+  kable_classic(html_font = "Cambria")
 ```
 
 ### Exactitud
