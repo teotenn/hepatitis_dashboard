@@ -6,8 +6,10 @@ description-title: Master en Bioestadística y Bioinformática
 lang: es
 output:
   flexdashboard::flex_dashboard:
+    theme:
+          version: 4
+          bootswatch: minty
     orientation: columns
-runtime: shiny
 ---
 
 ```{r global, include=FALSE}
@@ -16,7 +18,6 @@ library(kableExtra)
 library(plotly)
 library(tidyr)
 library(ggplot2)
-library(shiny)
 library(flexdashboard)
 library(reshape2)
 library(ade4)
