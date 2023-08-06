@@ -1,16 +1,19 @@
 ---
-title: "Hepatitis C Dashboard"
+title: "Hepatitis C Dashboard -"
 author: Manuel Teodoro Tenango
 affiliation-title: Centro Europeo de Másteres y Posgrados
 description-title: Master en Bioestadística y Bioinformática
 lang: es
 output:
   flexdashboard::flex_dashboard:
-    theme:
-          version: 4
-          bootswatch: minty
     orientation: columns
 ---
+
+<style type="text/css">
+   body {font-family: Arial, sans-serif;}
+   .navbar .navbar-brand {font-weight: 900;}
+   p {font-size: 17px;}
+</style>
 
 ```{r global, include=FALSE}
 library(dplyr)
@@ -43,44 +46,27 @@ datos <- mutate(
 datos_numeric <- datos[c(-1, -2, -4, -15)]
 ```
 
-Boxplots
+Intro
 ===
 
-Some major text
+Los datos utilizados presentan `r nrow(datos)` valores correspondientes a pacientes entre `r min(datos$Age)` y `r max(datos$Age)` años de edad. Se presentan datos de `r nrow(datos[datos$Sex == "m",])` varones y `r nrow(datos[datos$Sex == "f",])` mujeres, separados en 5 categorías: `r unique(datos$Category)`. Las **categorías** marcadas con **1** pertenecen a pacientes con el nivel mas bajo de hepatitis, la marca **2** es para estados mas avanzados que incluyen fibrosis, y la marca **3** son los casos mas graves que incluyen cirrosis. Los datos marcados con **0** corresponden a la muestra control.
+
+```{r tbl-view}
+set.seed(9)
+kable(datos[sample(datos$ID, 10), -1], row.names = FALSE, booktabs = T) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+
+Boxplots
+===
 
 Column {.tabset .tabset-fade}
 ----------------------------------------
 
-### Todas las variables
-
-Some extra text
-
-```{r boxplots_all}
-pivot_longer(
-  datos,
-  names_to = "Variables",
-  values_to = "Valores",
-  cols = -c(ID, Category, Age, Sex, severity)) %>%
-  plot_ly(x = ~interaction(Variables, severity), y = ~Valores) %>%
-  add_boxplot(color = ~Variables) %>%
-  layout(xaxis = list(title = ""))
-```
-
-
-### Por severidad
-
-```{r boxplots_sev}
-pivot_longer(
-  datos,
-  names_to = "Variables",
-  values_to = "Valores",
-  cols = -c(ID, Category, Age, Sex, severity)) %>%
-  plot_ly(x = ~severity, y = ~Valores) %>%
-  add_boxplot(color = ~severity) %>%
-  layout(xaxis = list(title = ""))
-```
-
 ### Por variable
+
+**Boxplot de las 10 variables clínicas numéricas**. Se observa una gran cantidad de valores extremos. 
 
 ```{r boxplots_var}
 pivot_longer(
@@ -93,11 +79,25 @@ pivot_longer(
   layout(xaxis = list(title = ""))
 ```
 
+### Por severidad
 
+**Boxplot de las 10 variables clínicas numéricas, agrupadas por severidad**. A pesar de la agrupación, se siguen observando gran cantidad de valores extremos.
+
+```{r boxplots_all}
+pivot_longer(
+  datos,
+  names_to = "Variables",
+  values_to = "Valores",
+  cols = -c(ID, Category, Age, Sex, severity)) %>%
+  plot_ly(x = ~interaction(Variables, severity), y = ~Valores) %>%
+  add_boxplot(color = ~Variables) %>%
+  layout(xaxis = list(title = ""))
+```
 
 Boxplots por var
 ===
 
+Las variables **ALB, AST, BIL, CHOL** y **GGT** muestran tendencias con respecto a la severidad.
 
 ```{r make_bxplots}
 make_boxplot_var <- function(variable) {
@@ -192,12 +192,12 @@ make_boxplot_var("PROT")
 Correlaciones
 ===
 
+De manera general, existe una pobre correlación entre las variables.
 
 Column {.tabset .tabset-fade}
 ----------------------------------------
 
 ### Heatmap
-
 
 ```{r heatmap}
 median_replace_missing <- function(vec) {
@@ -312,6 +312,7 @@ corPlot
 ACP
 ===
 
+El ACP no muestra agrupaciones claras de las variables con respecto a los primeros 5 componentes, que explican el 70% de la varianza.
 
 Column {.tabset .tabset-fade}
 ----------------------------------------
@@ -509,7 +510,17 @@ for (i in seq(11)) {
 biplo13
 ```
 
-Predicción de infección
+Modelos predictivos
+===
+
+Se entrenaron 4 modelos diferentes para predecir presencia o ausencia de infección, y para predecir la severidad de infecciones. Debido a la excesiva presencia de valores extremos y la carencia de distribución normal, se utilizaron modelos robustos que no son afectados por la presencia de valores extremos. Los modelos utilizados son:
+
+ + **Random forest** (**RF**) utilizando la librería `randomForest`.
+ + **Multinomial log-linear** en base a redes neuronales (**LOG**) con la librería `nnet`.
+ + **Gaussian naive bayes** (**GNB**) utilizando la librería `e1071`.
+ + **K nearest neighbors** (**KNN**) a través de la librería `caret`.
+
+Predic. Infección
 ===
 
 ```{r models_pre}
@@ -618,7 +629,7 @@ kable(matrix_knn$table, booktabs = T) %>%
   pack_rows("Prediction", 1, 2)
 ```
 
-Predicción de Severidad
+Predic. Severidad
 ===
 
 ```{r modelsSev_pre}
@@ -714,6 +725,8 @@ kbl(cm_knn$table, booktabs = T, row.names = T) %>%
 Resultados Modelos
 ===
 
+**LOG** es certero para presencia/ausencia de infección pero el menos preciso para severidad. **RF** también es preciso para presencia/ausencia de infección; **GNB, RF** y **KNN** presentan similares valores de exactitud y kappa para severidad.
+
 Column {.tabset .tabset-fade}
 ---------------------
 
@@ -786,4 +799,9 @@ hcresults <- rbind(results, results_infections)
 hcresults %>%
   hchart("column", hcaes(x = Method, y = Kappa, group = "Modelo"))
 
+```
+
+
+```{r todoes}
+## > Agregar detalles de random forest?
 ```
