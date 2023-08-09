@@ -49,7 +49,7 @@ datos_numeric <- datos[c(-1, -2, -4, -15)]
 Intro
 ===
 
-Los datos utilizados presentan `r nrow(datos)` valores correspondientes a pacientes entre `r min(datos$Age)` y `r max(datos$Age)` años de edad. Se presentan datos de `r nrow(datos[datos$Sex == "m",])` varones y `r nrow(datos[datos$Sex == "f",])` mujeres, separados en 5 categorías: `r unique(datos$Category)`. Las **categorías** marcadas con **1** pertenecen a pacientes con el nivel mas bajo de hepatitis, la marca **2** es para estados mas avanzados que incluyen fibrosis, y la marca **3** son los casos mas graves que incluyen cirrosis. Los datos marcados con **0** corresponden a la muestra control.
+Los datos utilizados presentan `r nrow(datos)` valores correspondientes a pacientes entre `r min(datos$Age)` y `r max(datos$Age)` años de edad. Se presentan datos de `r nrow(datos[datos$Sex == "m",])` varones y `r nrow(datos[datos$Sex == "f",])` mujeres, separados en 5 **categorías**: las marcadas con **1** pertenecen a pacientes con el nivel mas bajo de hepatitis, **2** es para estados mas avanzados que incluyen fibrosis, **3** para cirrosis y **0** control.
 
 ```{r tbl-view}
 set.seed(9)
@@ -103,7 +103,7 @@ Las variables **ALB, AST, BIL, CHOL** y **GGT** muestran tendencias con respecto
 make_boxplot_var <- function(variable) {
   require(rbokeh)
   datos$jitwich <- paste0(datos$severity, ":", runif(min = 0.2, max = 0.8, nrow(dd)))
-  figure(data = datos, width = 370, height = 500,
+  figure(data = datos, width = 370, height = 420,
          title = variable, legend = F, toolbar_location = NULL) %>%
     ly_boxplot(severity, variable,
                hover = c(severity, variable), 
