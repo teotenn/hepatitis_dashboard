@@ -515,10 +515,10 @@ Modelos predictivos
 
 Se entrenaron 4 modelos diferentes para predecir presencia o ausencia de infección, y para predecir la severidad de infecciones. Debido a la excesiva presencia de valores extremos y la carencia de distribución normal, se utilizaron modelos robustos que no son afectados por la presencia de valores extremos. Los modelos utilizados son:
 
- + **Random forest** (**RF**) utilizando la librería `randomForest`.
- + **Multinomial log-linear** en base a redes neuronales (**LOG**) con la librería `nnet`.
- + **Gaussian naive bayes** (**GNB**) utilizando la librería `e1071`.
- + **K nearest neighbors** (**KNN**) a través de la librería `caret`.
+ + **Random forest** (**RF**) utilizando la librería `randomForest`. Utiliza un ensamblaje de árboles de decisiones e incorpora elementos de bootstrap en la selección e interacción en el algoritmo de aprendizaje. El algoritmo es no paramétrico, interpretable, eficiente y tiene gran precisión de predicción.
+ + **Multinomial log-linear** en base a redes neuronales (**LOG**) con la librería `nnet`. Generaliza la regresión logística en problemas de múltiples categorías. Predice las probabilidades de los posibles resultados de una variable dependiente distribuida categóricamente, dado un conjunto de variables independientes. Las redes neuronales apoyan al modelo en la aproximación a la distribución multinomial.
+ + **Gaussian naive bayes** (**GNB**) utilizando la librería `e1071`. Es un clasificador sencillo basado en probabilidad y el teorema de Bayes. Naive Bayes considera cada attributo como una variable independiente, y una de sus mayores ventajas es que requiere pocos datos para entrenar el modelo. El modelo gausiano se utiliza para variables numéricas continuas por que se espera que los valores correlacionados con cada clase siguen una distribución gausiana. 
+ + **K nearest neighbors** (**KNN**) a través de la librería `caret`. Clasificador no paramétrico que utiliza las distancias euclideanas entre los vecinos de un valor para predecir su clasificación. Se utiliza para clasificación y reconocimiento de patrones.
 
 Predic. Infección
 ===
